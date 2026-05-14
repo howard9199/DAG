@@ -3,3 +3,4 @@ weight
 uv.lock
 *.pyc
 *.npy
+*.pt
