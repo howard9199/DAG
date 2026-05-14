@@ -1,0 +1,27 @@
+{
+  "image_id": "000061",
+  "iterations": 17,
+  "succeeded": true,
+  "active_history": [
+    174,
+    95,
+    92,
+    86,
+    72,
+    66,
+    62,
+    51,
+    44,
+    30,
+    22,
+    13,
+    10,
+    7,
+    6,
+    1,
+    2,
+    0
+  ],
+  "n_proposals": 3000,
+  "max_perturbation_pixel": 4.0005340576171875
+}

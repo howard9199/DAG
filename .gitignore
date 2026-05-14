@@ -1,2 +1,5 @@
 fetch_data/temp
 weight
+uv.lock
+*.pyc
+*.npy

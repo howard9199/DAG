@@ -1,0 +1,13 @@
+model: fcn_resnet50        # fcn_resnet50 or deeplabv3_resnet50
+weights: null              # optional .pt path; null uses torchvision pretrained
+voc_root: ~/datasets/VOCdevkit/VOC2012
+year: "2012"
+image_id: "2011_003271"
+shape: square              # circle | square | strip
+short_side: 520            # resize input so the short side is this many px (matches torchvision SemanticSegmentation default)
+max_iter: 200
+step_length: 0.5
+success_ratio: 0.01
+device: cuda
+output_dir: ./outputs/seg
+seed: 0

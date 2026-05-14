@@ -33,6 +33,14 @@ A simple demo which computes the adversarial examples for object detection and s
 
 
 
+## PyTorch port
+
+A modern Python/PyTorch reimplementation lives under [`python/`](python/). It targets the
+same Pascal VOC pipelines (segmentation + detection) on top of `torchvision` models, with
+no Caffe dependency. See [`python/README.md`](python/README.md) for installation, dataset
+setup, and CLI usage. The original MATLAB/matcaffe code in `code/`, `prototxt/`,
+`functions/`, and `fetch_data/` is preserved as the reference implementation.
+
 ## Citing DAG
 
 If you find DAG is useful in your research, please consider citing:

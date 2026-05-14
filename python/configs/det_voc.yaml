@@ -1,0 +1,16 @@
+model: fasterrcnn_resnet50_fpn
+weights: null
+num_classes: 21          # 91 = COCO native; 21 = VOC native (warm-started from COCO weights)
+voc_root: ~/datasets/VOCdevkit/VOC2007
+year: "2007"
+image_id: "2007_000925"
+short_side: 600          # match original DAG: 600 for detection
+rpn_post_nms_top_n: 3000 # match original DAG: top 3000 proposals
+rpn_nms_thresh: 0.9
+max_iter: 150
+step_length: 0.5
+strong_nms_thresh: 0.35
+strong_score_thresh: 0.8
+device: cuda
+output_dir: ./outputs/det
+seed: 0

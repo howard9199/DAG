@@ -1,0 +1,42 @@
+# Batch experiment config — runs both DAG-Seg and DAG-Det on a set of VOC images.
+# Used by scripts/run_experiment.py.
+
+# === models ===
+# Seg options: fcn_resnet50, fcn_resnet101, deeplabv3_resnet50, deeplabv3_resnet101
+# Det options: fasterrcnn_resnet50_fpn, fasterrcnn_resnet50_fpn_v2
+seg_model: deeplabv3_resnet101    # strongest torchvision VOC seg model
+det_model: fasterrcnn_resnet50_fpn_v2  # strongest torchvision Faster R-CNN
+
+# === iterations ===
+seg_iter: 200                     # paper budget: 200
+det_iter: 150                     # paper budget: 150
+
+# === sample selection ===
+num_item: null                    # null = process every image in the split; integer = first N
+
+# === dataset ===
+voc_root: /tmp/VOCdevkit/VOC2007
+year: "2007"
+split: trainval                   # which ImageSets/Segmentation/<split>.txt to read for seg ids
+                                  # det reuses the same ids if they have an .xml annotation
+
+# === input scaling ===
+seg_short_side: 520
+det_short_side: 600
+
+# === per-task knobs (mostly mirror seg_voc.yaml / det_voc.yaml) ===
+seg_shape: square                 # circle | square | strip
+seg_step_length: 0.5
+seg_success_ratio: 0.01
+
+det_step_length: 0.5
+det_num_classes: 21               # VOC-native head (warm-started from COCO)
+det_rpn_post_nms_top_n: 3000
+det_rpn_nms_thresh: 0.9
+det_strong_nms_thresh: 0.35
+det_strong_score_thresh: 0.8
+
+# === infra ===
+device: cuda
+output_dir: /home/adsl-1-2/GitHub/DAG/outputs/experiment
+seed: 0
