@@ -4,3 +4,4 @@ uv.lock
 *.pyc
 *.npy
 *.pt
+outputs

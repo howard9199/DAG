@@ -1,30 +1,36 @@
-# Batch experiment config — runs both DAG-Seg and DAG-Det on a set of VOC images.
+# Batch experiment config — runs DAG-Seg and DAG-Det across multiple models.
 # Used by scripts/run_experiment.py.
+#
+# Output layout: {output_dir}/{task}/{model_name}/{image_id}/
 
-# === models ===
+# === models per task (lists) ===
 # Seg options: fcn_resnet50, fcn_resnet101, deeplabv3_resnet50, deeplabv3_resnet101
+seg_models:
+  - fcn_resnet50
+  #- deeplabv3_resnet101
+
 # Det options: fasterrcnn_resnet50_fpn, fasterrcnn_resnet50_fpn_v2
-seg_model: deeplabv3_resnet101    # strongest torchvision VOC seg model
-det_model: fasterrcnn_resnet50_fpn_v2  # strongest torchvision Faster R-CNN
+det_models:
+  - fasterrcnn_resnet50_fpn
+  #- fasterrcnn_resnet50_fpn_v2
 
 # === iterations ===
-seg_iter: 200                     # paper budget: 200
-det_iter: 150                     # paper budget: 150
+seg_iter: 200                     # paper budget
+det_iter: 150                     # paper budget
 
 # === sample selection ===
-num_item: null                    # null = process every image in the split; integer = first N
+num_item: null                    # null = full dataset (every image in the seg trainval split)
 
 # === dataset ===
 voc_root: /tmp/VOCdevkit/VOC2007
 year: "2007"
-split: trainval                   # which ImageSets/Segmentation/<split>.txt to read for seg ids
-                                  # det reuses the same ids if they have an .xml annotation
+split: trainval                   # ImageSets/Segmentation/<split>.txt — images with both .png and .xml
 
 # === input scaling ===
 seg_short_side: 520
 det_short_side: 600
 
-# === per-task knobs (mostly mirror seg_voc.yaml / det_voc.yaml) ===
+# === per-task knobs ===
 seg_shape: square                 # circle | square | strip
 seg_step_length: 0.5
 seg_success_ratio: 0.01
@@ -40,3 +46,4 @@ det_strong_score_thresh: 0.8
 device: cuda
 output_dir: /home/adsl-1-2/GitHub/DAG/outputs/experiment
 seed: 0
+skip_existing: true               # don't redo an (image, model) if metrics.json already exists
