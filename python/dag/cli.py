@@ -95,7 +95,8 @@ def run_seg(cfg: Dict[str, Any]) -> Dict[str, Any]:
         verbose=cfg.get("verbose", False),
     )
 
-    out_dir = Path(cfg["output_dir"]).expanduser() / cfg["image_id"]
+    sample_suffix = f"_{cfg['sample_idx']}" if "sample_idx" in cfg else ""
+    out_dir = Path(cfg["output_dir"]).expanduser() / f"{cfg['image_id']}{sample_suffix}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     orig_pixel = denormalize(x_norm).squeeze(0)
@@ -124,6 +125,7 @@ def run_seg(cfg: Dict[str, Any]) -> Dict[str, Any]:
 
     metrics = {
         "image_id": cfg["image_id"],
+        "sample_idx": int(cfg.get("sample_idx", 0)),
         "shape": cfg["shape"],
         "iterations": result.iterations,
         "succeeded": result.succeeded,

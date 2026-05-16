@@ -31,7 +31,8 @@ seg_short_side: 520
 det_short_side: 600
 
 # === per-task knobs ===
-seg_shape: square                 # circle | square | strip
+seg_shape: random                 # circle | square | strip | random (procedural blobs)
+seg_samples_per_image: 5          # only used when seg_shape=random; outputs go to seg/random_<model>/<image_id>_<k>/
 seg_step_length: 0.5
 seg_success_ratio: 0.01
 

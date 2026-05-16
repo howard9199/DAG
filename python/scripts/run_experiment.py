@@ -38,26 +38,48 @@ def _pick_ids(voc_root: Path, year: str, split: str, num_item: Optional[int]) ->
     return ids
 
 
-def _seg_cfg(cfg: Dict[str, Any], model_name: str, image_id: str) -> Dict[str, Any]:
-    return {
+def _seg_cfg(
+    cfg: Dict[str, Any],
+    model_name: str,
+    image_id: str,
+    sample_idx: int = 0,
+    image_index: int = 0,
+) -> Dict[str, Any]:
+    shape = cfg.get("seg_shape", "square")
+    # Random-shape runs write to seg/random_<model>/ so they don't collide with the
+    # fixed-shape output tree under seg/<model>/.
+    is_random = shape == "random"
+    model_dir = f"random_{model_name}" if is_random else model_name
+    base_seed = int(cfg.get("seed", 0))
+    sample_seed = base_seed * 100000 + image_index * 100 + sample_idx if is_random else base_seed
+    out = {
         "model": model_name,
         "weights": cfg.get("seg_weights"),
         "voc_root": cfg["voc_root"],
         "year": cfg["year"],
         "image_id": image_id,
-        "shape": cfg.get("seg_shape", "square"),
+        "shape": shape,
         "short_side": cfg["seg_short_side"],
         "max_iter": cfg["seg_iter"],
         "step_length": cfg.get("seg_step_length", 0.5),
         "success_ratio": cfg.get("seg_success_ratio", 0.01),
         "device": cfg["device"],
-        "output_dir": str(Path(cfg["output_dir"]) / "seg" / model_name),
-        "seed": cfg.get("seed", 0),
+        "output_dir": str(Path(cfg["output_dir"]) / "seg" / model_dir),
+        "seed": sample_seed,
         "verbose": False,
     }
+    if is_random:
+        out["sample_idx"] = sample_idx
+    return out
 
 
-def _det_cfg(cfg: Dict[str, Any], model_name: str, image_id: str) -> Dict[str, Any]:
+def _det_cfg(
+    cfg: Dict[str, Any],
+    model_name: str,
+    image_id: str,
+    sample_idx: int = 0,
+    image_index: int = 0,
+) -> Dict[str, Any]:
     return {
         "model": model_name,
         "weights": cfg.get("det_weights"),
@@ -79,8 +101,9 @@ def _det_cfg(cfg: Dict[str, Any], model_name: str, image_id: str) -> Dict[str, A
     }
 
 
-def _already_done(out_root: Path, task: str, model_name: str, image_id: str) -> bool:
-    return (out_root / task / model_name / image_id / "metrics.json").exists()
+def _already_done(out_dir: Path, image_id: str, sample_idx: int, with_suffix: bool) -> bool:
+    dir_name = f"{image_id}_{sample_idx}" if with_suffix else image_id
+    return (out_dir / dir_name / "metrics.json").exists()
 
 
 def _run_model_pass(
@@ -91,30 +114,40 @@ def _run_model_pass(
     runner,
     cfg_builder,
     skip_existing: bool,
+    samples_per_image: int = 1,
+    with_sample_suffix: bool = False,
 ) -> List[Dict[str, Any]]:
     summary: List[Dict[str, Any]] = []
-    out_root = Path(cfg["output_dir"])
-    print(f"\n[{task.upper()}] model = {model_name}")
+    # Resolve the actual per-(task, model) output dir by asking the cfg_builder.
+    probe_cfg = cfg_builder(cfg, model_name, ids[0] if ids else "_probe", 0, 0)
+    out_dir = Path(probe_cfg["output_dir"])
+    K = max(1, int(samples_per_image))
+    total = len(ids) * K
+    print(f"\n[{task.upper()}] model = {model_name}  (samples/image = {K}, total = {total})")
     t_model = time.time()
     n_done, n_skip, n_err = 0, 0, 0
+    step = 0
     for i, image_id in enumerate(ids):
-        if skip_existing and _already_done(out_root, task, model_name, image_id):
-            n_skip += 1
-            continue
-        t = time.time()
-        try:
-            m = runner(cfg_builder(cfg, model_name, image_id))
-            summary.append({**m, "model": model_name})
-            h = m["active_history"]
-            drop = 100 * (h[0] - h[-1]) / max(h[0], 1) if h else 0.0
-            n_done += 1
-            if (i + 1) % 10 == 0 or i < 3 or i + 1 == len(ids):
-                print(f"  [{i+1:4d}/{len(ids)}] {image_id}: iters={m['iterations']:3d}  "
-                      f"drop={drop:5.1f}%  succ={m['succeeded']}  "
-                      f"pert={m['max_perturbation_pixel']:5.2f}  ({time.time()-t:.1f}s)")
-        except Exception as e:
-            n_err += 1
-            print(f"  [{i+1:4d}/{len(ids)}] {image_id}: ERROR — {type(e).__name__}: {e}")
+        for k in range(K):
+            step += 1
+            if skip_existing and _already_done(out_dir, image_id, k, with_sample_suffix):
+                n_skip += 1
+                continue
+            t = time.time()
+            tag = f"{image_id}_{k}" if with_sample_suffix else image_id
+            try:
+                m = runner(cfg_builder(cfg, model_name, image_id, k, i))
+                summary.append({**m, "model": model_name})
+                h = m["active_history"]
+                drop = 100 * (h[0] - h[-1]) / max(h[0], 1) if h else 0.0
+                n_done += 1
+                if step % 10 == 0 or step <= 3 or step == total:
+                    print(f"  [{step:5d}/{total}] {tag}: iters={m['iterations']:3d}  "
+                          f"drop={drop:5.1f}%  succ={m['succeeded']}  "
+                          f"pert={m['max_perturbation_pixel']:5.2f}  ({time.time()-t:.1f}s)")
+            except Exception as e:
+                n_err += 1
+                print(f"  [{step:5d}/{total}] {tag}: ERROR — {type(e).__name__}: {e}")
     print(f"  → {task}/{model_name}: done={n_done} skipped={n_skip} errors={n_err}  "
           f"elapsed={(time.time()-t_model)/60:.1f} min")
     return summary
@@ -152,9 +185,15 @@ def main() -> None:
     t_total = time.time()
 
     if not args.skip_seg:
+        seg_is_random = cfg.get("seg_shape", "square") == "random"
+        seg_K = int(cfg.get("seg_samples_per_image", 1)) if seg_is_random else 1
         for model_name in seg_models:
             all_summary["seg"].extend(
-                _run_model_pass("seg", model_name, ids, cfg, run_seg, _seg_cfg, skip_existing)
+                _run_model_pass(
+                    "seg", model_name, ids, cfg, run_seg, _seg_cfg, skip_existing,
+                    samples_per_image=seg_K,
+                    with_sample_suffix=seg_is_random,
+                )
             )
 
     if not args.skip_det:
